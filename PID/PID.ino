@@ -31,6 +31,8 @@ double y_pasado = 0;
 double r_actual = 0; //Valor entre 0 y 5 volts
 double r_pasado = 0;
 double Int = 0;
+int M = 0;
+double X = 0;
 
 //Parametros del Controlador
 double Kp = 6.1364;
@@ -40,11 +42,16 @@ double Ts = 0.01;
 double Tt = sqrt(Ti*Td);
 double alfa = 0.1*Td;
 
-//Pines
-int pinY = A0;
-int pinU = 5;
-int pinR = A1;
+//Pines Analogicos
+int pinR = A0;
+int pinX  = A1;
+int pinY = A3;
+int pinU = A5;
 
+//Pines Digitales
+
+int pinLED =12;
+int pinM = 13;
 
 Task PID_task(10, TASK_FOREVER, &PID, &RealTimeCore); 
 
@@ -56,7 +63,9 @@ void tarea01Fun(){
     Serial.print(",");
     Serial.print(y_actual);
     Serial.print(",");
-    Serial.println(u);
+    Serial.print(u);
+    Serial.print(",");
+    Serial.println(X);
 }
 
 //void tarea02Fun(){
@@ -86,33 +95,50 @@ void setup() {
   pinMode(pinY, INPUT);
   pinMode(pinU, OUTPUT);
   pinMode(pinR, INPUT);
-
+  pinMode(pinM, INPUT);
+  pinMode(pinLED, OUTPUT);
+  pinMode(pinX, INPUT);
+  
 }
 
 void loop() {
   // Acá va el código que se repite indefinidamente:
   RealTimeCore.execute(); // Cuando se usa un scheduler, esta instrucción es la única que debería estar en el loop
-}
-
-void PID () {
-  //Se utiliza aproximacion rectangular hacia atras
-  //Int = Int + r_actual-y_actual;
-  double P = Kp*(r_actual-y_actual);
-  double D = alfa*Td*D/(alfa*Td+Ts)+Kp*Td*((r_pasado-y_pasado)-(r_actual-y_actual))/(alfa*Td+Ts);
-  //double I = ((Kp/Ti)+((u-u_w)/Tt))*Int;
-  double I = I + ((Kp*Ts/Ti))*(r_pasado-y_pasado);
-  //I = ((K/Ti)*(r-y)+((1/Tt)*))/s;
-  u = P + D + I;
-  if(u > 5 ) {
-    u = 5; 
-  } else if(u < 0) {
-    u = 0; 
-  }
-
+  M = digitalRead(pinM);
+  if(M){
+    digitalWrite(pinLED,HIGH);  
+    X = analogRead(pinX)*5/1023;
+    u = X;
+    analogWrite(pinU,u*255/5);//Se escriben valores de 0 a 255, u varia de 0 a 5 volts 
+  }else{
+    digitalWrite(pinLED,LOW);
+    
+    }
+    
   y_pasado = y_actual;
   y_actual = analogRead(pinY)*5/1023;//se convierte la lectura a un valor entre 0 y 5 volts, se leen valores de 0 a 1023
   
   r_pasado = r_actual;
   r_actual = analogRead(pinR)*5/1023;
-  analogWrite(pinU,u*255/5);//Se escriben valores de 0 a 255, u varia de 0 a 5 volts
+  
+}
+
+
+void PID () {
+  //Se utiliza aproximacion rectangular hacia atras
+  //Int = Int + r_actual-y_actual;
+  if(!M){
+    double P = Kp*(r_actual-y_actual);
+    double D = alfa*Td*D/(alfa*Td+Ts)+Kp*Td*((r_pasado-y_pasado)-(r_actual-y_actual))/(alfa*Td+Ts);
+    //double I = ((Kp/Ti)+((u-u_w)/Tt))*Int;
+    double I = I + ((Kp*Ts/Ti))*(r_pasado-y_pasado);
+    //I = ((K/Ti)*(r-y)+((1/Tt)*))/s;
+    u = P + D + I;
+    if(u > 5 ) {
+      u = 5; 
+    } else if(u < 0) {
+      u = 0; 
+    }
+    analogWrite(pinU,u*255/5);//Se escriben valores de 0 a 255, u varia de 0 a 5 volts
+  }
 }
