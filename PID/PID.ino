@@ -43,7 +43,7 @@ double Tt = sqrt(Ti*Td);
 double alfa = 0.1*Td;
 
 //Pines Analogicos
-int pinR = A0;
+int pinSP = A0;
 int pinX  = A1;
 int pinY = A3;
 int pinU = A5;
@@ -94,7 +94,7 @@ void setup() {
   PID_task.enable();
   pinMode(pinY, INPUT);
   pinMode(pinU, OUTPUT);
-  pinMode(pinR, INPUT);
+  pinMode(pinSP, INPUT);
   pinMode(pinM, INPUT);
   pinMode(pinLED, OUTPUT);
   pinMode(pinX, INPUT);
@@ -119,7 +119,7 @@ void loop() {
   y_actual = analogRead(pinY)*5/1023;//se convierte la lectura a un valor entre 0 y 5 volts, se leen valores de 0 a 1023
   
   r_pasado = r_actual;
-  r_actual = analogRead(pinR)*5/1023;
+  r_actual = analogRead(pinSP)*5/1023;
   
 }
 
