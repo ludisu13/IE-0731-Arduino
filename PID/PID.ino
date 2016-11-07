@@ -18,7 +18,7 @@ void tarea01Fun();
 void PID();
 
 // Acá se crean las tareas. Las tareas son objetos del tipo Task definidos por la librería:
-Task tarea01(100, TASK_FOREVER, &tarea01Fun, &RealTimeCore); //Tarea que se repite cada 1000 milisegundos indefinidamente
+Task tarea01(10, TASK_FOREVER, &tarea01Fun, &RealTimeCore); //Tarea que se repite cada 1000 milisegundos indefinidamente
 //Task tarea02(3000, TASK_FOREVER, &tarea02Fun, &RealTimeCore); //Tarea que se repite cada 3000 milisegundos indefinidamente
 //Task tarea03(5000, 3, &tarea03Fun, &RealTimeCore); //Tarea que se repite sólo tres veces cada 5000 milisegundos
 
@@ -35,37 +35,41 @@ int M = 0;
 double X = 0;
 
 //Parametros del Controlador
-double Kp = 6.1364;
-double Ti = 8.1264;
-double Td = 0.3305;
-double Ts = 0.01;
+double Kp = 11.796;
+double Ti = 6.6456;
+double Td = 0.824;
+double Ts = 0.1;
 double Tt = sqrt(Ti*Td);
-double alfa = 0.1*Td;
+double alfa = 0.1;
+
+double P = 0;
+double I = 0;
+double D = 0;
 
 //Pines Analogicos
 int pinSP = A0;
 int pinX  = A1;
 int pinY = A3;
-int pinU = A5;
+int pinU = 5;
 
 //Pines Digitales
 
 int pinLED =12;
 int pinM = 13;
 
-Task PID_task(10, TASK_FOREVER, &PID, &RealTimeCore); 
+Task PID_task(Ts*1000, TASK_FOREVER, &PID, &RealTimeCore); 
 
 
 // Ahora se deben definir explícitamente las funciones
 void tarea01Fun(){
     //Serial.print("El valor deseado es: ");
-    Serial.print(r_actual);
+    Serial.print(r_actual*100/1023);
     Serial.print(",");
-    Serial.print(y_actual);
+    Serial.print(y_actual*100/1023);
     Serial.print(",");
-    Serial.print(u);
+    Serial.print(u*100/1023);
     Serial.print(",");
-    Serial.println(X);
+    Serial.println(X*100/1023);
 }
 
 //void tarea02Fun(){
@@ -97,7 +101,7 @@ void setup() {
   pinMode(pinSP, INPUT);
   pinMode(pinM, INPUT);
   pinMode(pinLED, OUTPUT);
-  pinMode(pinX, INPUT);
+  pinMode(pinX, INPUT); 
   
 }
 
@@ -107,19 +111,20 @@ void loop() {
   M = digitalRead(pinM);
   if(M){
     digitalWrite(pinLED,HIGH);  
-    X = analogRead(pinX)*5/1023;
+    X = analogRead(pinX);
     u = X;
-    analogWrite(pinU,u*255/5);//Se escriben valores de 0 a 255, u varia de 0 a 5 volts 
+    analogWrite(pinU,u*255/1023);//Se escriben valores de 0 a 255, u varia de 0 a 5 volts 
   }else{
     digitalWrite(pinLED,LOW);
     
     }
-    
+
   y_pasado = y_actual;
-  y_actual = analogRead(pinY)*5/1023;//se convierte la lectura a un valor entre 0 y 5 volts, se leen valores de 0 a 1023
+  y_actual = analogRead(pinY);//se convierte la lectura a un valor entre 0 y 5 volts, se leen valores de 0 a 1023
   
   r_pasado = r_actual;
-  r_actual = analogRead(pinSP)*5/1023;
+  r_actual = analogRead(pinSP);
+    
   
 }
 
@@ -127,18 +132,25 @@ void loop() {
 void PID () {
   //Se utiliza aproximacion rectangular hacia atras
   //Int = Int + r_actual-y_actual;
+
+  
   if(!M){
-    double P = Kp*(r_actual-y_actual);
-    double D = alfa*Td*D/(alfa*Td+Ts)+Kp*Td*((r_pasado-y_pasado)-(r_actual-y_actual))/(alfa*Td+Ts);
+    P = Kp*(r_actual-y_actual);
+    D = alfa*Td*D/(alfa*Td+Ts)-Kp*Td*((r_pasado-y_pasado)-(r_actual-y_actual))/(alfa*Td+Ts);
     //double I = ((Kp/Ti)+((u-u_w)/Tt))*Int;
-    double I = I + ((Kp*Ts/Ti))*(r_pasado-y_pasado);
+    
     //I = ((K/Ti)*(r-y)+((1/Tt)*))/s;
     u = P + D + I;
-    if(u > 5 ) {
-      u = 5; 
+    if(u > 1023 ) {
+      u = 1023; 
     } else if(u < 0) {
       u = 0; 
     }
-    analogWrite(pinU,u*255/5);//Se escriben valores de 0 a 255, u varia de 0 a 5 volts
+    
+    analogWrite(pinU,u*255/1023);//Se escriben valores de 0 a 255, u varia de 0 a 5 volts
+
+    I = I + ((Kp*Ts/Ti))*(r_actual-y_actual);
   }
+  
+
 }
