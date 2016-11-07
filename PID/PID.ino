@@ -1,34 +1,18 @@
-/*
- * Este programa sirve de plantilla para utilizar la librería
- * TaskScheduler en el curso IE0731: Sistemas en Tiempo discreto
- * 
- * Se recomienda revisar la documentación de la librería que está
- * en el sitio virtual del curso, junto con la librería.
- * El sitio donde el autor de la librería aloja el código es el siguiente:
- * https://github.com/arkhipenko/TaskScheduler
- */
 #include "Arduino.h"
-#include "TaskScheduler.h" //Se carga la librería del Scheduler
-Scheduler RealTimeCore; //Esto crea un objeto del tipo Scheduler (definido por la librería) en este caso, el objeto se llama RealTimeCore, pero se puede poner cualquier nombre
+#include "TaskScheduler.h" //Se carga la libreria del Scheduler
+Scheduler RealTimeCore; //Esto crea un objeto del tipo Scheduler
 
-// Se deben definir los prototipos de las funciones de cada una de las tareas, en este caso se definen tres funciones. En inglés es lo que se llaman Callbacks
 void tarea01Fun();
-//void tarea02Fun();
-//void tarea03Fun();
-void PID();
-
-// Acá se crean las tareas. Las tareas son objetos del tipo Task definidos por la librería:
-Task tarea01(10, TASK_FOREVER, &tarea01Fun, &RealTimeCore); //Tarea que se repite cada 1000 milisegundos indefinidamente
-//Task tarea02(3000, TASK_FOREVER, &tarea02Fun, &RealTimeCore); //Tarea que se repite cada 3000 milisegundos indefinidamente
-//Task tarea03(5000, 3, &tarea03Fun, &RealTimeCore); //Tarea que se repite sólo tres veces cada 5000 milisegundos
+void PID(); 
 
 //Salida del controlador
 double u = 0;
 double u_w = 0;
+
 //Valores iniciales 
 double y_actual = 0;
 double y_pasado = 0;
-double r_actual = 0; //Valor entre 0 y 5 volts
+double r_actual = 0; 
 double r_pasado = 0;
 double Int = 0;
 int M = 0;
@@ -39,28 +23,35 @@ double Kp = 11.796;
 double Ti = 6.6456;
 double Td = 0.824;
 double Ts = 0.1;
-double Tt = sqrt(Ti*Td);
 double alfa = 0.1;
 
-double P = 0;
-double I = 0;
-double D = 0;
+double P = 0; // Accion proporcional
+double I = 0; // Accion integral
+double D = 0; // Accion derivativa
 
-//Pines Analogicos
+//Pines de entrada analogicos
 int pinSP = A0;
 int pinX  = A1;
 int pinY = A3;
+
+// Pin de salida analogica
 int pinU = 5;
 
-//Pines Digitales
 
+//Pines de entrada y salida digitales
 int pinLED =12;
 int pinM = 13;
 
-Task PID_task(Ts*1000, TASK_FOREVER, &PID, &RealTimeCore); 
+
+// Creacion de tareas:
+
+Task tarea01(100, TASK_FOREVER, &tarea01Fun, &RealTimeCore); //Tarea de monitoreo de señales. Se ejecuta cada 10ms
+Task PID_task(Ts*1000, TASK_FOREVER, &PID, &RealTimeCore); //Tarea del controlador PID. Se ejecuta cada Ts = 0.1s
 
 
-// Ahora se deben definir explícitamente las funciones
+// Funcion de Monitoreo: Imprime la señales de interes ya normalizadas entre 0 y 100% en el puerto serial.
+// Utiliza un formato csv para poder utilizar el plotter de Arduino.
+
 void tarea01Fun(){
     //Serial.print("El valor deseado es: ");
     Serial.print(r_actual*100/1023);
@@ -72,30 +63,46 @@ void tarea01Fun(){
     Serial.println(X*100/1023);
 }
 
-//void tarea02Fun(){
-//  Serial.print("Se ejecuta la tarea 02 a los "); //Escribe un string en el puerto serial
-//  Serial.println(millis());
-//}
-//
-//void tarea03Fun(){
-//  Serial.print("Se ejecuta la tarea 03 a los "); //Escribe un string en el puerto serial
-//  Serial.println(millis());
-//}
+// Controlador PID: Si esta en modo automatico (M=0V) calcula las acciones proporcional, integral y derivativa.
+// La accion de control es normalizada entre los valores de 0 a 1023 para implementar el antiwindup y no 
+// escribir un valor mas alto del que soportan los puertos.
+// La accion integral se calcula de tal forma que sea la que aplica en el siguiente tiempo de muestreo.
+void PID () {
+  
+  if(!M){
+    P = Kp*(r_actual-y_actual);
+    D = alfa*Td*D/(alfa*Td+Ts)-Kp*Td*((r_pasado-y_pasado)-(r_actual-y_actual))/(alfa*Td+Ts);
+    u = P + D + I;
+    if(u > 1023 ) {
+      u = 1023; 
+    } else if(u < 0) {
+      u = 0; 
+    }
+    
+    analogWrite(pinU,u*255/1023);
+    I = I + ((Kp*Ts/Ti))*(r_actual-y_actual);
+    
+  }
+}
+
+/*Funcion de inicializacion: 
+    - Inicializa el puerto serial
+    - Inicializa el Scheduler
+    - Agrega las tareas al Scheduler y las habilita
+    - Configura los pines de entrada y salida
+*/
 
 void setup() {
-  // El código que se ponga acá se ejecuta una única vez al inicio:
+ 
   Serial.begin(9600); //se inicia la comunicación serial a 9600 bauds
   RealTimeCore.init(); //Inicializa el scheduler
-  Serial.println("Se inicializo el Scheduler");
-  RealTimeCore.addTask(tarea01); //Se agrega la tarea 01 al scheduler
-//  RealTimeCore.addTask(tarea02); //Se agrega la tarea 02 al scheduler
-//  RealTimeCore.addTask(tarea03); //Se agrega la tarea 03 al scheduler
-  RealTimeCore.addTask(PID_task);
-  Serial.println("Se agregaron las tareas al Scheduler");
-  tarea01.enable(); // Se pone el flag de enable para la tarea 01. Por default, las tareas están desabilitadas
-//  tarea02.enable(); // Se pone el flag de enable para la tarea 02. Por default, las tareas están desabilitadas
-//  tarea03.enable(); // Se pone el flag de enable para la tarea 03. Por default, las tareas están desabilitadas
+  //Se agregan las tareas al scheduler
+  RealTimeCore.addTask(tarea01); 
+  RealTimeCore.addTask(PID_task);  
+  // Se habilitan las tareas
+  tarea01.enable();
   PID_task.enable();
+  // Se configuran los puertos
   pinMode(pinY, INPUT);
   pinMode(pinU, OUTPUT);
   pinMode(pinSP, INPUT);
@@ -105,22 +112,28 @@ void setup() {
   
 }
 
+// En el loop se ejecuta el Scheduler, la accion manual del sistema (M=5V) y se actualizan
+// los valores de los pines y_actual y r_actual. Se guardan los valores anteriores en las
+// variables y_pasado y r_pasado.
+
 void loop() {
-  // Acá va el código que se repite indefinidamente:
-  RealTimeCore.execute(); // Cuando se usa un scheduler, esta instrucción es la única que debería estar en el loop
+  
+  RealTimeCore.execute();
   M = digitalRead(pinM);
+ 
   if(M){
-    digitalWrite(pinLED,HIGH);  
-    X = analogRead(pinX);
+    // Accion manual
+    digitalWrite(pinLED,HIGH); // Se prende un LED para indicar el cambio a manual
+    X = analogRead(pinX); // Se escrive directamente del puerto X al puerto u
     u = X;
-    analogWrite(pinU,u*255/1023);//Se escriben valores de 0 a 255, u varia de 0 a 5 volts 
+    analogWrite(pinU,u*255/1023);
   }else{
     digitalWrite(pinLED,LOW);
     
     }
 
   y_pasado = y_actual;
-  y_actual = analogRead(pinY);//se convierte la lectura a un valor entre 0 y 5 volts, se leen valores de 0 a 1023
+  y_actual = analogRead(pinY);
   
   r_pasado = r_actual;
   r_actual = analogRead(pinSP);
@@ -129,28 +142,4 @@ void loop() {
 }
 
 
-void PID () {
-  //Se utiliza aproximacion rectangular hacia atras
-  //Int = Int + r_actual-y_actual;
 
-  
-  if(!M){
-    P = Kp*(r_actual-y_actual);
-    D = alfa*Td*D/(alfa*Td+Ts)-Kp*Td*((r_pasado-y_pasado)-(r_actual-y_actual))/(alfa*Td+Ts);
-    //double I = ((Kp/Ti)+((u-u_w)/Tt))*Int;
-    
-    //I = ((K/Ti)*(r-y)+((1/Tt)*))/s;
-    u = P + D + I;
-    if(u > 1023 ) {
-      u = 1023; 
-    } else if(u < 0) {
-      u = 0; 
-    }
-    
-    analogWrite(pinU,u*255/1023);//Se escriben valores de 0 a 255, u varia de 0 a 5 volts
-
-    I = I + ((Kp*Ts/Ti))*(r_actual-y_actual);
-  }
-  
-
-}
