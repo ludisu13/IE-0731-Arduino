@@ -40,10 +40,11 @@ D = ss1.D;
 
 %Ko = 1/(C*((eye(size(G))-G+H*K)^-1)*H);
 
-Polo= 0.55;
+Polo= 0.1;
 P = [Polo;Polo;Polo;Polo];
 Ke = acker(G',C',P)';
 
+Polo= 0.9;
 P = [Polo;Polo;Polo;Polo;Polo];
 
 Gtecho= [[G , zeros(4,1)];[-C , 1]];
