@@ -41,17 +41,18 @@ D = ss1.D;
 %Ko = 1/(C*((eye(size(G))-G+H*K)^-1)*H);
 
 Polo= 0.7;
-P = [Polo;Polo;Polo;Polo;Polo];
+P = Polo%[Polo;Polo]%;Polo;Polo;Polo];
 Ke = acker(G',C',P)';
 
-Polo= 0.95;
-P = [Polo;Polo;Polo;Polo;Polo;Polo];
+Polo1= 0.5;
+Polo2=0.8
+P = [Polo1;Polo2]%;Polo;Polo;Polo;Polo];
 
-Gtecho= [[G , zeros(5,1)];[-C , 1]];
+Gtecho= [[G , zeros(1,1)];[-C , 1]];
 Htecho = [H;0];
 
 Ktecho = acker(Gtecho, Htecho, P);
-Ktemp = Ktecho*[[C, -1];[eye(size(G)), zeros(5,1)]]^-1;
+Ktemp = Ktecho*[[C, -1];[eye(size(G)), zeros(1,1)]]^-1;
 K1 = Ktemp(1);
 K2 = Ktemp(2:end);
 
@@ -66,3 +67,8 @@ NoCont = length(G)-Co;
 Mb = obsv(G,C);
 Ob = rank(Mb);
 NoObs = length(G)-Ob;
+
+identsys.inputData=identsys.inputData-identsys.inputData(1);
+identsys.outputData=identsys.outputData-identsys.outputData(1);
+Entrada=Entrada-Entrada(1);
+Salida=Salida-Salida(1);
