@@ -44,7 +44,7 @@ Polo= 0.7;
 P = [Polo;Polo;Polo;Polo;Polo];
 Ke = acker(G',C',P)';
 
-Polo= 0.95;
+Polo= 1;
 P = [Polo;Polo;Polo;Polo;Polo;Polo];
 
 Gtecho= [[G , zeros(5,1)];[-C , 1]];
